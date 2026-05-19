@@ -113,6 +113,10 @@ namespace ProjectShashtra
                 Log.Fatal(ex, "Host terminated unexpectedly");
                 throw;
             }
+            finally
+            {
+                Log.CloseAndFlush();
+            }
         }
     }
 }
