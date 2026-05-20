@@ -15,7 +15,7 @@ namespace ProjectShashtra
 
 
             var builder = WebApplication.CreateBuilder(args);
-
+            
             //Serilog Configuration
             var Configuration = new ConfigurationBuilder()
                 //.AddJsonFile("appsettings.json",optional:false,reloadOnChange:true)
@@ -29,6 +29,9 @@ namespace ProjectShashtra
                  .Enrich.WithMachineName()
                .Enrich.WithEnvironmentName()
                 .CreateLogger();
+
+            builder.Host.UseSerilog();
+
 
             // JWT Configuration
             var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -98,6 +101,8 @@ namespace ProjectShashtra
 
                 app.UseHttpsRedirection();
 
+
+                app.UseMiddleware<ExceptionMiddleware>();
 
                 // ── in pipeline ──
                 app.UseCors("AllowReact");

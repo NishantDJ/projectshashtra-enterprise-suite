@@ -12,17 +12,24 @@ namespace ProjectShashtra.Controllers
     [Authorize]
     public class ProductController : ControllerBase
     {
-
+        private readonly ILogger<ProductController> _logger;
         private readonly IProductRepository _repo;
-        public ProductController(IProductRepository repo)
+        public ProductController(IProductRepository repo, ILogger<ProductController> logger)
         {
             _repo = repo;
+            _logger = logger;
         }
 
         [HttpGet]
         [Authorize(Roles =$"{Roles.Admin},{Roles.User}")]
         public IActionResult Get()
         {
+            _logger.LogInformation("Accessed GetProduct at {Time}",DateTime.UtcNow);
+           
+                int x = 0;
+                int y = 5 / x;
+           
+           
             return Ok(_repo.GetProducts());
 
         }
