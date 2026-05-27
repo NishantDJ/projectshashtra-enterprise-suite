@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using ProjectShashtra.Constants;
 using ProjectShashtra.Data;
 using ProjectShashtra.Models;
+using System.Linq;
 
 namespace ProjectShashtra.Controllers
 {
@@ -30,7 +31,21 @@ namespace ProjectShashtra.Controllers
                 int y = 5 / x;
            
            
-            return Ok(_repo.GetProducts());
+            var product = _repo.GetProducts();
+
+            //  LINQ 
+            var result1 = product
+                .Where(p => p.Price > 500)
+                .OrderBy(p => p.Name)
+                .ToList();
+
+            //  LINQ 
+            var result = result1 
+                .Select(r=> new{
+                r.Name,
+                r.Price})
+                .ToList();
+            return Ok(result);
 
         }
         [HttpGet("{id}")]
@@ -61,11 +76,11 @@ namespace ProjectShashtra.Controllers
                 return NotFound("Product not found");
             return Ok("Product Updated successfully");
         }
-        [HttpDelete]
+        [HttpDelete("{id}")]
         [Authorize(Roles = Roles.Admin)]
         public IActionResult DeleteProduct(int id)
         {
-            if (id == null)
+            if (id <= 0)
                 return BadRequest();
             bool result = _repo.DeleteProduct(id);
             if (!result)
