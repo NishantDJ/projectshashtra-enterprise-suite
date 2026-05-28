@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using ProjectShashtra.Services;
 using Serilog; // make sure this exists
+using Microsoft.EntityFrameworkCore;
+using ProjectShashtra.Data;
 
 namespace ProjectShashtra
 {
@@ -58,11 +60,15 @@ namespace ProjectShashtra
 
             // Database Connection Test
             var connectionString = builder.Configuration.GetConnectionString("DBCS");
-            using (SqlConnection con = new SqlConnection(connectionString))
+            //using (SqlConnection con = new SqlConnection(connectionString))
+            //{
+            //    con.Open();
+            //    Console.WriteLine("Database Connected Successfully");
+            //}
+            builder.Services.AddDbContext<ApplicationDbContext>(options =>
             {
-                con.Open();
-                Console.WriteLine("Database Connected Successfully");
-            }
+                options.UseSqlServer(connectionString);
+            });
 
             // Add services to DI container
             builder.Services.AddControllers();
