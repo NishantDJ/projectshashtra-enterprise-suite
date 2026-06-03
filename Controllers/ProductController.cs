@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using ProjectShashtra.Constants;
 using ProjectShashtra.Data;
 using ProjectShashtra.Models;
+using System.Linq;
 
 namespace ProjectShashtra.Controllers
 {
@@ -12,18 +13,39 @@ namespace ProjectShashtra.Controllers
     [Authorize]
     public class ProductController : ControllerBase
     {
-
+        private readonly ILogger<ProductController> _logger;
         private readonly IProductRepository _repo;
-        public ProductController(IProductRepository repo)
+        public ProductController(IProductRepository repo, ILogger<ProductController> logger)
         {
             _repo = repo;
+            _logger = logger;
         }
 
         [HttpGet]
         [Authorize(Roles =$"{Roles.Admin},{Roles.User}")]
         public IActionResult Get()
         {
-            return Ok(_repo.GetProducts());
+            _logger.LogInformation("Accessed GetProduct at {Time}",DateTime.UtcNow);
+           
+                int x = 0;
+                int y = 5 / x;
+           
+           
+            var product = _repo.GetProducts();
+
+            //  LINQ 
+            var result1 = product
+                .Where(p => p.Price > 500)
+                .OrderBy(p => p.Name)
+                .ToList();
+
+            //  LINQ 
+            var result = result1 
+                .Select(r=> new{
+                r.Name,
+                r.Price})
+                .ToList();
+            return Ok(result);
 
         }
         [HttpGet("{id}")]
@@ -54,11 +76,11 @@ namespace ProjectShashtra.Controllers
                 return NotFound("Product not found");
             return Ok("Product Updated successfully");
         }
-        [HttpDelete]
+        [HttpDelete("{id}")]
         [Authorize(Roles = Roles.Admin)]
         public IActionResult DeleteProduct(int id)
         {
-            if (id == null)
+            if (id <= 0)
                 return BadRequest();
             bool result = _repo.DeleteProduct(id);
             if (!result)

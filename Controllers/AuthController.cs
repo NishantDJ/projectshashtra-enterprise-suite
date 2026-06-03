@@ -13,15 +13,19 @@ namespace ProjectShashtra.Controllers
     public class AuthController : ControllerBase
     {
         private readonly AuthService _authService;
-
-        public AuthController(AuthService authService)
+        private readonly ILogger<AuthController> _logger;
+        public AuthController(AuthService authService, ILogger<AuthController> logger)
         {
             _authService = authService;
+            _logger = logger;
         }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody]RegisterDTO dto)
         {
+
+            _logger.LogInformation("User register at {Time}", DateTime.UtcNow);
+
             if (string.IsNullOrWhiteSpace(dto.Username) ||
                 string.IsNullOrWhiteSpace(dto.Fullname) ||
                 string.IsNullOrWhiteSpace(dto.PasswordHash))

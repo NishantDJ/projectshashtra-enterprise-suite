@@ -9,5 +9,10 @@ namespace ProjectShashtra.Data
         int InsertProducts(Product product);
         bool UpdateProduct(Product product);
         bool DeleteProduct(int id);
+
+
+        List<Employee> GetEmployees();
     }
+
+   
 }
