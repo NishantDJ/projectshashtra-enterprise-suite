@@ -10,10 +10,17 @@ export const AuthProvider = ({ children }) => {
   });
 
   // Register
-  const register = async (formData) => {
-    const res = await axiosInstance.post("/Auth/register", formData);
-    return res.data;
+ const register = async (formData) => {
+  const payload = {
+    fullname: formData.fullName,
+    username: formData.email,
+    passwordHash: formData.password,
+    role: "User"
   };
+
+  const res = await axiosInstance.post("/Auth/register", payload);
+  return res.data;
+};
 
   // Login — store tokens and user info
   const login = async (formData) => {
