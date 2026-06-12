@@ -1,6 +1,6 @@
 ﻿namespace ProjectShashtra.Models
 {
-    public class Employee
+    public class EmployeeDTO
     {
         public int EmployeeId { get; set; }
 
@@ -19,6 +19,7 @@
         public decimal Salary { get; set; }
 
         public DateTime JoiningDate { get; set; }
+
 
         public bool IsActive { get; set; }
     }

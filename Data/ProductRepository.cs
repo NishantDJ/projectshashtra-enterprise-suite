@@ -147,9 +147,9 @@ namespace ProjectShashtra.Data
 
         }
 
-        public List<Employee> GetEmployees()
+        public List<EmployeeDTO> GetEmployees()
         {
-            var employees = new List<Employee>();
+            var employees = new List<EmployeeDTO>();
 
             using (SqlConnection con = new SqlConnection(_connectionString))
             {
@@ -162,7 +162,7 @@ namespace ProjectShashtra.Data
 
                 while (reader.Read())
                 {
-                    employees.Add(new Employee()
+                    employees.Add(new EmployeeDTO()
                     {
                         EmployeeId = Convert.ToInt32(reader["EmployeeId"]),
                         UserId = Convert.ToInt32(reader["UserId"]),                                                                   

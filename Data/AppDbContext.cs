@@ -12,6 +12,20 @@ namespace ProjectShashtra.Data
         public DbSet<Employee> Employees { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
 
-       
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Employee>()
+                .ToTable("Employees");
+
+            modelBuilder.Entity<User>()
+                .ToTable("Users");
+
+            modelBuilder.Entity<Employee>()
+                .HasOne(e=>e.User)
+                .WithOne(u=>u.Employee)
+                .HasForeignKey<Employee>(e=> e.UserId);
+
+            base.OnModelCreating(modelBuilder);
+        }
     }
 }

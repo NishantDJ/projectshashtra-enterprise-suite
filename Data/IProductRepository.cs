@@ -11,7 +11,7 @@ namespace ProjectShashtra.Data
         bool DeleteProduct(int id);
 
 
-        List<Employee> GetEmployees();
+        List<EmployeeDTO> GetEmployees();
     }
 
    

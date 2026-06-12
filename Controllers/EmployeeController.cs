@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using ProjectShashtra.Constants;
 using ProjectShashtra.Data;
 using ProjectShashtra.Models;
@@ -24,7 +25,9 @@ namespace ProjectShashtra.Controllers
         //[Authorize (Roles =Roles.Admin)]
         public IActionResult GetEmployees()
         {
-            var result = _context.Employees.ToList();
+            var result = _context.Employees
+                        .Include(e => e.User)
+                        .ToList();
             return Ok(result);
         }
     }

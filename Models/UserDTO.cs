@@ -1,24 +1,16 @@
 ﻿using ProjectShashtra.Data;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
-
 
 namespace ProjectShashtra.Models
 {
-    public class User
+    public class UserDTO
     {
         public int UserId { get; set; }
-        [Column("FullName")]
         public string Fullname { get; set; }
-
-        [Column("Email")]
         public string Username { get; set; }
-
         public string PasswordHash { get; set; }
         public string Role { get; set; } = "user";
-        public DateTime CreatedAt { get; set; }
+        public DateTime CreatedAt {  get; set; }
 
-        [JsonIgnore]
         public Employee? Employee { get; set; }
     }
 }
