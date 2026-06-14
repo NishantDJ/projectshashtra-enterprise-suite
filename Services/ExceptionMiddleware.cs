@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 
 namespace ProjectShashtra.Services
 {
-    // You may need to install the Microsoft.AspNetCore.Http.Abstractions package into your project
     public class ExceptionMiddleware
     {
         private readonly RequestDelegate _next;
@@ -27,26 +26,42 @@ namespace ProjectShashtra.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unhandeled Exception Occured at {Time}", DateTime.UtcNow);
+                _logger.LogError(
+                    ex,
+                    "Unhandled exception occurred. Message: {Message}",
+                    ex.Message);
+
+                var statusCode = ex switch
+                {
+                    ArgumentException => HttpStatusCode.BadRequest,
+                    UnauthorizedAccessException => HttpStatusCode.Unauthorized,
+                    KeyNotFoundException => HttpStatusCode.NotFound,
+                    _ => HttpStatusCode.InternalServerError
+                };
+
                 httpContext.Response.ContentType = "application/json";
-                httpContext.Response.StatusCode= (int)HttpStatusCode.InternalServerError;
+                httpContext.Response.StatusCode = (int)statusCode;
 
                 var response = new
                 {
                     StatusCode = httpContext.Response.StatusCode,
-                    Message = "Internal Server Error"
+                    Message = statusCode == HttpStatusCode.InternalServerError
+                        ? "An unexpected error occurred"
+                        : ex.Message
                 };
 
-                var json = JsonSerializer.Serialize(response);
+                var json = JsonSerializer.Serialize(
+                    response,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    });
 
                 await httpContext.Response.WriteAsync(json);
-
-                
             }
         }
     }
 
-    // Extension method used to add the middleware to the HTTP request pipeline.
     public static class ExceptionMiddlewareExtensions
     {
         public static IApplicationBuilder UseExceptionMiddleware(this IApplicationBuilder builder)
