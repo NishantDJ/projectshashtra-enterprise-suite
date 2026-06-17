@@ -15,12 +15,11 @@ namespace ProjectShashtra.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ILogger<EmployeeController> _logger;
         private readonly IEmployeeRepository _employeeRepository;
-        //private readonly IProductRepository _repo;
+       
         public EmployeeController(
     IEmployeeRepository employeeRepository, ILogger<EmployeeController> logger, ApplicationDbContext context)
         {
-            _context = context;
-            //_repo = repo;
+            _context = context;            
             _logger = logger;
             _employeeRepository = employeeRepository;
         }

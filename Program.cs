@@ -7,6 +7,9 @@ using ProjectShashtra.Services;
 using Serilog; // make sure this exists
 using Microsoft.EntityFrameworkCore;
 using ProjectShashtra.Data;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using ProjectShashtra.Validators;
 
 namespace ProjectShashtra
 {
@@ -76,7 +79,9 @@ namespace ProjectShashtra
     {
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
     });
+            builder.Services.AddFluentValidationAutoValidation();
 
+            builder.Services.AddValidatorsFromAssemblyContaining<ProductValidator>();
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
             builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
             builder.Services.AddScoped<AuthService>(); 
