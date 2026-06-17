@@ -14,21 +14,60 @@ namespace ProjectShashtra.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<EmployeeController> _logger;
-        private readonly IProductRepository _repo;
-        public EmployeeController(IProductRepository repo, ILogger<EmployeeController> logger, ApplicationDbContext context)
+        private readonly IEmployeeRepository _employeeRepository;
+        //private readonly IProductRepository _repo;
+        public EmployeeController(
+    IEmployeeRepository employeeRepository, ILogger<EmployeeController> logger, ApplicationDbContext context)
         {
             _context = context;
-            _repo = repo;
+            //_repo = repo;
             _logger = logger;
+            _employeeRepository = employeeRepository;
         }
         [HttpGet]
-        //[Authorize (Roles =Roles.Admin)]
-        public IActionResult GetEmployees()
+        public async Task<IActionResult> GetEmployees()
         {
-            var result = _context.Employees
-                        .Include(e => e.User)
-                        .ToList();
+            var employees = await _employeeRepository.GetAllAsync();
+
+            return Ok(employees);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetEmployee(int id)
+        {
+            var employee = await _employeeRepository.GetByIdAsync(id);
+
+            if (employee == null)
+                return NotFound();
+
+            return Ok(employee);
+        }
+        [HttpPost]
+        public async Task<IActionResult> CreateEmployee(Employee employee)
+        {
+            var result = await _employeeRepository.AddAsync(employee);
+
             return Ok(result);
+        }
+        [HttpPut]
+        public async Task<IActionResult> UpdateEmployee(Employee employee)
+        {
+            bool result = await _employeeRepository.UpdateAsync(employee);
+
+            if (!result)
+                return NotFound();
+
+            return Ok();
+        }
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteEmployee(int id)
+        {
+            bool result = await _employeeRepository.DeleteAsync(id);
+
+            if (!result)
+                return NotFound();
+
+            return Ok();
         }
     }
 }

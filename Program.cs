@@ -78,6 +78,7 @@ namespace ProjectShashtra
     });
 
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
+            builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
             builder.Services.AddScoped<AuthService>(); 
 
             builder.Services.AddEndpointsApiExplorer();
