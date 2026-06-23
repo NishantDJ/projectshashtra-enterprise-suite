@@ -1,6 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.IdentityModel.Tokens;
-using ProjectShashtra.Data;
+using ProjectShashtra.DTOs;
 using ProjectShashtra.Models;
 using System.Data;
 using System.IdentityModel.Tokens.Jwt;

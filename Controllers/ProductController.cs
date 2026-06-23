@@ -2,36 +2,38 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ProjectShashtra.Constants;
-using ProjectShashtra.Data;
 using ProjectShashtra.Models;
+using ProjectShashtra.Repositories.Interfaces;
+using ProjectShashtra.Services.Interfaces;
 using System.Linq;
 
 namespace ProjectShashtra.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    //[Authorize]
     public class ProductController : ControllerBase
     {
         private readonly ILogger<ProductController> _logger;
-        private readonly IProductRepository _repo;
-        public ProductController(IProductRepository repo, ILogger<ProductController> logger)
+        private readonly IProductService _service;
+
+        public ProductController(IProductService service,ILogger<ProductController> logger)
         {
-            _repo = repo;
+            _service = service;
             _logger = logger;
         }
 
         [HttpGet]
-        [Authorize(Roles =$"{Roles.Admin},{Roles.User}")]
+        //[Authorize(Roles =$"{Roles.Admin},{Roles.User}")]
         public IActionResult Get()
         {
             _logger.LogInformation("Accessed GetProduct at {Time}",DateTime.UtcNow);
            
-                int x = 0;
-                int y = 5 / x;
+                //int x = 0;
+                //int y = 5 / x;
            
            
-            var product = _repo.GetProducts();
+            var product = _service.GetProducts();
 
             //  LINQ 
             var result1 = product
@@ -49,40 +51,40 @@ namespace ProjectShashtra.Controllers
 
         }
         [HttpGet("{id}")]
-        [Authorize(Roles = $"{Roles.Admin},{Roles.User}")]
+        //[Authorize(Roles = $"{Roles.Admin},{Roles.User}")]
         public IActionResult GetById(int id)
         {
-            return Ok(_repo.GetProductsById(id));
+            return Ok(_service.GetProductsById(id));
 
         }
         [HttpPost]
-        [Authorize(Roles = Roles.Admin)]
+        //[Authorize(Roles = Roles.Admin)]
         public IActionResult InsertProducts(Product product)
         {
             if (product == null)
                 return BadRequest();
-            int newid = _repo.InsertProducts(product);
+            int newid = _service.InsertProducts(product);
             return Ok(newid);
         }
 
         [HttpPut]
-        [Authorize(Roles = Roles.Admin)]
+        //[Authorize(Roles = Roles.Admin)]
         public IActionResult UpdateProduct(Product product)
         {
             if (product == null)
                 return BadRequest();
-            bool result = _repo.UpdateProduct(product);
+            bool result = _service.UpdateProduct(product);
             if (!result)
                 return NotFound("Product not found");
             return Ok("Product Updated successfully");
         }
         [HttpDelete("{id}")]
-        [Authorize(Roles = Roles.Admin)]
+        //[Authorize(Roles = Roles.Admin)]
         public IActionResult DeleteProduct(int id)
         {
             if (id <= 0)
                 return BadRequest();
-            bool result = _repo.DeleteProduct(id);
+            bool result = _service.DeleteProduct(id);
             if (!result)
                 return NotFound("Product not deleted");
             return Ok("Product deleted successfully");

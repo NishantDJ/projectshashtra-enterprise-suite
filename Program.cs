@@ -1,15 +1,17 @@
-﻿using ProjectShashtra.Data;
-using Microsoft.Data.SqlClient;
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using ProjectShashtra.Services;
-using Serilog; // make sure this exists
-using Microsoft.EntityFrameworkCore;
-using ProjectShashtra.Data;
-using FluentValidation;
+﻿using FluentValidation;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using ProjectShashtra.Data;
+using ProjectShashtra.Repositories;
+using ProjectShashtra.Repositories.Interfaces;
+using ProjectShashtra.Services;
+using ProjectShashtra.Services.Interfaces;
 using ProjectShashtra.Validators;
+using Serilog; // make sure this exists
+using System.Text;
 
 namespace ProjectShashtra
 {
@@ -83,7 +85,9 @@ namespace ProjectShashtra
 
             builder.Services.AddValidatorsFromAssemblyContaining<ProductValidator>();
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
+            builder.Services.AddScoped<IProductService, ProductService>();
             builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+            builder.Services.AddScoped<IEmployeeService, EmployeeService>();
             builder.Services.AddScoped<AuthService>(); 
 
             builder.Services.AddEndpointsApiExplorer();

@@ -1,4 +1,6 @@
-﻿namespace ProjectShashtra.Data
+﻿using ProjectShashtra.Repositories.Interfaces;
+
+namespace ProjectShashtra.Repositories
 {
     public class UserRepository:IUserRepository
     {

@@ -1,12 +1,13 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Options;
 using ProjectShashtra.Models;
+using ProjectShashtra.Repositories.Interfaces;
 using System.Data;
 using System.Data.SqlClient;
 using System.Text.RegularExpressions;
 
 
-namespace ProjectShashtra.Data
+namespace ProjectShashtra.Repositories
 {
     public class ProductRepository : IProductRepository
     {
@@ -39,7 +40,7 @@ namespace ProjectShashtra.Data
             }
             //  WHERE — Filtering
             var expensiveprod = products
-                                .Where(p=>p.Price>500)
+                                .Where(p => p.Price > 500)
                                 .ToList();
 
             // SELECT — Projection
@@ -66,9 +67,9 @@ namespace ProjectShashtra.Data
 
             // ANY()
             bool hasany = products
-                .Any(p => p.Stock ==0);
+                .Any(p => p.Stock == 0);
 
-            return expensiveprod;
+            return products;
         }
 
         public List<Product> GetProductsById(int id)

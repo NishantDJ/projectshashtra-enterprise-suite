@@ -1,4 +1,4 @@
-﻿namespace ProjectShashtra.Data
+﻿namespace ProjectShashtra.DTOs
 {
     public class RegisterDTO
     {

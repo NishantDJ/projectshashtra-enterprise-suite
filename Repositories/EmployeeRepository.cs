@@ -1,7 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using ProjectShashtra.Data;
 using ProjectShashtra.Models;
 
-namespace ProjectShashtra.Data
+namespace ProjectShashtra.Repositories
 {
     public class EmployeeRepository : IEmployeeRepository
     {

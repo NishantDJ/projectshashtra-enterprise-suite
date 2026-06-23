@@ -1,7 +1,7 @@
 ﻿
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ProjectShashtra.Data;
+using ProjectShashtra.DTOs;
 using ProjectShashtra.Models;
 using ProjectShashtra.Services;
 

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ProjectShashtra.Constants;
 using ProjectShashtra.Data;
 using ProjectShashtra.Models;
+using ProjectShashtra.Services.Interfaces;
 
 namespace ProjectShashtra.Controllers
 {
@@ -11,14 +12,14 @@ namespace ProjectShashtra.Controllers
     //[Authorize]
     public class EmployeeController : ControllerBase
     {
-        private readonly IEmployeeRepository _employeeRepository;
+        private readonly IEmployeeService _employeeService;
         private readonly ILogger<EmployeeController> _logger;
 
         public EmployeeController(
-            IEmployeeRepository employeeRepository,
+            IEmployeeService employeeService,
             ILogger<EmployeeController> logger)
         {
-            _employeeRepository = employeeRepository;
+            _employeeService = employeeService;
             _logger = logger;
         }
 
@@ -33,7 +34,7 @@ namespace ProjectShashtra.Controllers
         {
             _logger.LogInformation("Fetching employees");
 
-            var employees = await _employeeRepository.GetAllAsync();
+            var employees = await _employeeService.GetAllAsync();
 
             // Filtering
             if (!string.IsNullOrWhiteSpace(department))
@@ -73,7 +74,7 @@ namespace ProjectShashtra.Controllers
         {
             _logger.LogInformation("Fetching employee with Id {Id}", id);
 
-            var employee = await _employeeRepository.GetByIdAsync(id);
+            var employee = await _employeeService.GetByIdAsync(id);
 
             if (employee == null)
             {
@@ -94,7 +95,7 @@ namespace ProjectShashtra.Controllers
 
             _logger.LogInformation("Creating employee");
 
-            var result = await _employeeRepository.AddAsync(employee);
+            var result = await _employeeService.AddAsync(employee);
 
             return CreatedAtAction(
                 nameof(GetEmployee),
@@ -112,7 +113,7 @@ namespace ProjectShashtra.Controllers
 
             _logger.LogInformation("Updating employee Id {Id}", employee.EmployeeId);
 
-            bool result = await _employeeRepository.UpdateAsync(employee);
+            bool result = await _employeeService.UpdateAsync(employee);
 
             if (!result)
             {
@@ -130,7 +131,7 @@ namespace ProjectShashtra.Controllers
         {
             _logger.LogWarning("Deleting employee Id {Id}", id);
 
-            bool result = await _employeeRepository.DeleteAsync(id);
+            bool result = await _employeeService.DeleteAsync(id);
 
             if (!result)
             {
