@@ -1,148 +1,93 @@
-﻿
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ProjectShashtra.DTOs;
 using ProjectShashtra.Models;
-using ProjectShashtra.Services;
+using ProjectShashtra.Services.Interfaces;
 
 namespace ProjectShashtra.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly AuthService _authService;
+        private readonly IAuthService _authService;
         private readonly ILogger<AuthController> _logger;
 
-        public AuthController(AuthService authService, ILogger<AuthController> logger)
+        public AuthController(
+            IAuthService authService,
+            ILogger<AuthController> logger)
         {
             _authService = authService;
             _logger = logger;
         }
 
-         
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterDTO dto)
+        public async Task<IActionResult> Register(RegisterDTO dto)
         {
-            _logger.LogInformation(
-                "Register attempt for {Email} at {Time}",
-                dto.Username,
-                DateTime.UtcNow
-            );
+            bool result =
+                await _authService.RegisterAsync(dto);
 
-            if (await _authService.EmailExists(dto.Username))
+            if (!result)
             {
                 return Conflict(
-                    ApiResponse<string>.Fail("Email already registered.")
-                );
-            }
-
-            bool success = await _authService.RegisterUser(dto);
-
-            if (!success)
-            {
-                return StatusCode(
-                    500,
-                    ApiResponse<string>.Fail("Registration failed.")
-                );
+                    ApiResponse<string>.Fail(
+                        "Email already exists."));
             }
 
             return Ok(
-                ApiResponse<string>.Ok("User registered successfully.")
-            );
+                ApiResponse<string>.Ok(
+                    "User registered successfully."));
         }
 
-         
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDto dto)
+        public async Task<IActionResult> Login(LoginDto dto)
         {
-            var user = await _authService.GetUserByEmailAsync(dto.Username);
+            var result =
+                await _authService.LoginAsync(dto);
 
-            if (user == null ||
-                !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+            if (result == null)
             {
                 return Unauthorized(
-                    ApiResponse<string>.Fail("Invalid username or password.")
-                );
+                    ApiResponse<string>.Fail(
+                        "Invalid username or password."));
             }
 
-            string accessToken = _authService.GenerateJwtToken(user);
-            string refreshToken = _authService.GenerateRefreshToken();
-
-            await _authService.SaveRefreshTokenAsync(user.UserId, refreshToken);
-
-            _logger.LogInformation(
-                "User {Email} logged in at {Time}",
-                user.Username,
-                DateTime.UtcNow
-            );
-
             return Ok(
-                ApiResponse<object>.Ok(
-                    new
-                    {
-                        accessToken,
-                        refreshToken,
-                        fullName = user.Fullname,
-                        username = user.Username,
-                        role = user.Role
-                    },
-                    "Login successful."
-                )
-            );
+                ApiResponse<AuthResponseDto>.Ok(
+                    result,
+                    "Login successful."));
         }
 
-         
         [HttpPost("refresh")]
-        public async Task<IActionResult> Refresh([FromBody] RefreshRequestDto dto)
+        public async Task<IActionResult> Refresh(
+            RefreshRequestDto dto)
         {
-            var savedToken = await _authService.GetValidRefreshTokenAsync(dto.RefreshToken);
+            var result =
+                await _authService
+                    .RefreshTokenAsync(dto.RefreshToken);
 
-            if (savedToken == null)
+            if (result == null)
             {
                 return Unauthorized(
-                    ApiResponse<string>.Fail("Invalid or expired refresh token.")
-                );
+                    ApiResponse<string>.Fail(
+                        "Invalid refresh token."));
             }
-
-            var user = await _authService.GetUserByIdAsync(savedToken.UserId);
-
-            if (user == null)
-            {
-                return Unauthorized(
-                    ApiResponse<string>.Fail("User not found.")
-                );
-            }
-
-            await _authService.RevokeRefreshTokenAsync(dto.RefreshToken);
-
-            string newAccessToken = _authService.GenerateJwtToken(user);
-            string newRefreshToken = _authService.GenerateRefreshToken();
-
-            await _authService.SaveRefreshTokenAsync(user.UserId, newRefreshToken);
 
             return Ok(
-                ApiResponse<object>.Ok(
-                    new
-                    {
-                        accessToken = newAccessToken,
-                        refreshToken = newRefreshToken
-                    }
-                )
-            );
+                ApiResponse<AuthResponseDto>.Ok(result));
         }
 
-       
-        [HttpPost("logout")]
         [Authorize]
-        public async Task<IActionResult> Logout([FromBody] RefreshRequestDto dto)
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout(
+            RefreshRequestDto dto)
         {
-            await _authService.RevokeRefreshTokenAsync(dto.RefreshToken);
+            await _authService
+                .LogoutAsync(dto.RefreshToken);
 
             return Ok(
-                ApiResponse<string>.Ok("Logged out successfully.")
-            );
+                ApiResponse<string>.Ok(
+                    "Logged out successfully."));
         }
     }
 }
-

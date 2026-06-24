@@ -1,8 +1,8 @@
-﻿using Microsoft.Data.SqlClient;
-using Microsoft.IdentityModel.Tokens;
+﻿using Microsoft.IdentityModel.Tokens;
 using ProjectShashtra.DTOs;
 using ProjectShashtra.Models;
-using System.Data;
+using ProjectShashtra.Repositories.Interfaces;
+using ProjectShashtra.Services.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -10,246 +10,196 @@ using System.Text;
 
 namespace ProjectShashtra.Services
 {
-    public class AuthService
+    public class AuthService : IAuthService
     {
-        private readonly string _connectionString;
+        private readonly IUserRepository _repository;
         private readonly IConfiguration _config;
 
-        public AuthService(IConfiguration configuration)
+        public AuthService(
+            IUserRepository repository,
+            IConfiguration config)
         {
-            _config = configuration;
-            _connectionString = configuration.GetConnectionString("DBCS")!;
+            _repository = repository;
+            _config = config;
         }
 
-        public async Task<bool> EmailExists(string email)
+        public async Task<bool> RegisterAsync(RegisterDTO dto)
         {
-            using (SqlConnection con = new SqlConnection(_connectionString))
-            {
-                string query = "SELECT COUNT(1) FROM Users WHERE Email = @Email";
+            if (await _repository.EmailExistsAsync(dto.Username))
+                return false;
 
-                SqlCommand cmd = new SqlCommand(query, con);
-                cmd.Parameters.AddWithValue("@Email", email);
+            string hash =
+                BCrypt.Net.BCrypt.HashPassword(dto.PasswordHash);
 
-                await con.OpenAsync();
-
-                int count = (int)(await cmd.ExecuteScalarAsync())!;
-                return count > 0;
-            }
-        }
-
-        public async Task<bool> RegisterUser(RegisterDTO dto)
-        {
-            string passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.PasswordHash);
-
-            string role = dto.Role is "Admin" or "User"
-                ? dto.Role
+            string role =
+                dto.Role == "Admin"
+                ? "Admin"
                 : "User";
 
-            using (SqlConnection conn = new SqlConnection(_connectionString))
-            {
-                SqlCommand cmd = new SqlCommand("usp_RegisterUser", conn);
-                cmd.CommandType = CommandType.StoredProcedure;
+            int rows =
+                await _repository.RegisterUserAsync(
+                    dto.Fullname,
+                    dto.Username,
+                    hash,
+                    role);
 
-                cmd.Parameters.AddWithValue("@FullName", dto.Fullname);
-                cmd.Parameters.AddWithValue("@Email", dto.Username);
-                cmd.Parameters.AddWithValue("@Role", role);
-                cmd.Parameters.AddWithValue("@PasswordHash", passwordHash);
-
-                await conn.OpenAsync();
-
-                int rows = await cmd.ExecuteNonQueryAsync();
-                return rows > 0;
-            }
+            return rows > 0;
         }
 
-        public async Task<User?> GetUserByEmailAsync(string email)
+        public async Task<AuthResponseDto?> LoginAsync(LoginDto dto)
         {
-            using (SqlConnection conn = new SqlConnection(_connectionString))
-            {
-                SqlCommand cmd = new SqlCommand("usp_GetUserByEmail", conn);
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@UserName", email);
+            var user =
+                await _repository.GetUserByEmailAsync(
+                    dto.Username);
 
-                await conn.OpenAsync();
-
-                using var reader = await cmd.ExecuteReaderAsync();
-
-                if (await reader.ReadAsync())
-                {
-                    return new User
-                    {
-                        UserId = reader.GetInt32(0),
-                        Fullname = reader.GetString(1),
-                        Username = reader.GetString(2),
-                        PasswordHash = reader.GetString(3),
-                        Role = reader.GetString(4)
-                    };
-                }
-
+            if (user == null)
                 return null;
-            }
+
+            bool valid =
+                BCrypt.Net.BCrypt.Verify(
+                    dto.Password,
+                    user.PasswordHash);
+
+            if (!valid)
+                return null;
+
+            string accessToken =
+                GenerateJwtToken(user);
+
+            string refreshToken =
+                GenerateRefreshToken();
+
+            await SaveRefreshToken(user.UserId, refreshToken);
+
+            return new AuthResponseDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                FullName = user.Fullname,
+                Username = user.Username,
+                Role = user.Role
+            };
         }
 
-        public string GenerateJwtToken(User user)
+        public async Task<AuthResponseDto?> RefreshTokenAsync(
+            string refreshToken)
         {
-            var jwtSettings = _config.GetSection("JwtSettings");
+            var savedToken =
+                await _repository
+                    .GetValidRefreshTokenAsync(refreshToken);
 
-            var key = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
+            if (savedToken == null)
+                return null;
+
+            var user =
+                await _repository
+                    .GetUserByIdAsync(savedToken.UserId);
+
+            if (user == null)
+                return null;
+
+            await _repository
+                .RevokeRefreshTokenAsync(refreshToken);
+
+            string accessToken =
+                GenerateJwtToken(user);
+
+            string newRefreshToken =
+                GenerateRefreshToken();
+
+            await SaveRefreshToken(
+                user.UserId,
+                newRefreshToken);
+
+            return new AuthResponseDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = newRefreshToken,
+                FullName = user.Fullname,
+                Username = user.Username,
+                Role = user.Role
+            };
+        }
+
+        public async Task<bool> LogoutAsync(string refreshToken)
+        {
+            await _repository
+                .RevokeRefreshTokenAsync(refreshToken);
+
+            return true;
+        }
+
+        private async Task SaveRefreshToken(
+            int userId,
+            string token)
+        {
+            int expiryDays =
+                Convert.ToInt32(
+                    _config["JwtSettings:RefreshTokenExpiryDays"]);
+
+            await _repository.SaveRefreshTokenAsync(
+                userId,
+                token,
+                DateTime.UtcNow.AddDays(expiryDays));
+        }
+
+        private string GenerateRefreshToken()
+        {
+            byte[] bytes = new byte[64];
+
+            using var rng =
+                RandomNumberGenerator.Create();
+
+            rng.GetBytes(bytes);
+
+            return Convert.ToBase64String(bytes);
+        }
+
+        private string GenerateJwtToken(User user)
+        {
+            var jwt =
+                _config.GetSection("JwtSettings");
+
+            var key =
+                new SymmetricSecurityKey(
+                    Encoding.UTF8.GetBytes(jwt["Key"]!));
 
             var credentials =
-                new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+                new SigningCredentials(
+                    key,
+                    SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, user.Username),
-                new Claim("fullname", user.Fullname),
-                new Claim(ClaimTypes.Role, user.Role),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                new Claim(
+                    JwtRegisteredClaimNames.Sub,
+                    user.UserId.ToString()),
+
+                new Claim(
+                    JwtRegisteredClaimNames.Email,
+                    user.Username),
+
+                new Claim(
+                    ClaimTypes.Role,
+                    user.Role),
+
+                new Claim(
+                    "fullname",
+                    user.Fullname)
             };
 
-            var token = new JwtSecurityToken(
-                issuer: jwtSettings["Issuer"],
-                audience: jwtSettings["Audience"],
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(
-                    Convert.ToDouble(jwtSettings["ExpiryInMinutes"])),
-                signingCredentials: credentials
-            );
+            var token =
+                new JwtSecurityToken(
+                    issuer: jwt["Issuer"],
+                    audience: jwt["Audience"],
+                    claims: claims,
+                    expires: DateTime.UtcNow.AddMinutes(
+                        Convert.ToDouble(
+                            jwt["ExpiryInMinutes"])),
+                    signingCredentials: credentials);
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-
-        public string GenerateRefreshToken()
-        {
-            var randomBytes = new byte[64];
-
-            using var rng = RandomNumberGenerator.Create();
-            rng.GetBytes(randomBytes);
-
-            return Convert.ToBase64String(randomBytes);
-        }
-
-        public async Task SaveRefreshTokenAsync(int userId, string token)
-        {
-            var expiryDays =
-                Convert.ToInt32(_config["JwtSettings:RefreshTokenExpiryDays"]);
-
-            using (SqlConnection con = new SqlConnection(_connectionString))
-            {
-                string query = @"
-                    INSERT INTO RefreshTokens
-                    (
-                        UserId,
-                        Token,
-                        ExpiresAt
-                    )
-                    VALUES
-                    (
-                        @UserId,
-                        @Token,
-                        @ExpiresAt
-                    )";
-
-                SqlCommand cmd = new SqlCommand(query, con);
-
-                cmd.Parameters.AddWithValue("@UserId", userId);
-                cmd.Parameters.AddWithValue("@Token", token);
-                cmd.Parameters.AddWithValue(
-                    "@ExpiresAt",
-                    DateTime.UtcNow.AddDays(expiryDays));
-
-                await con.OpenAsync();
-
-                await cmd.ExecuteNonQueryAsync();
-            }
-        }
-
-        public async Task<RefreshToken?> GetValidRefreshTokenAsync(string token)
-        {
-            string query = @"
-                SELECT
-                    Id,
-                    UserId,
-                    Token,
-                    ExpiresAt,
-                    IsRevoked
-                FROM RefreshTokens
-                WHERE Token = @Token
-                AND IsRevoked = 0
-                AND ExpiresAt > GETUTCDATE()";
-
-            using (SqlConnection con = new SqlConnection(_connectionString))
-            {
-                SqlCommand cmd = new SqlCommand(query, con);
-                cmd.Parameters.AddWithValue("@Token", token);
-
-                await con.OpenAsync();
-
-                using var reader = await cmd.ExecuteReaderAsync();
-
-                if (await reader.ReadAsync())
-                {
-                    return new RefreshToken
-                    {
-                        Id = reader.GetInt32(0),
-                        UserId = reader.GetInt32(1),
-                        Token = reader.GetString(2),
-                        ExpiresAt = reader.GetDateTime(3),
-                        IsRevoked = reader.GetBoolean(4)
-                    };
-                }
-
-                return null;
-            }
-        }
-
-        public async Task RevokeRefreshTokenAsync(string token)
-        {
-            using (SqlConnection con = new SqlConnection(_connectionString))
-            {
-                string query = @"
-                    UPDATE RefreshTokens
-                    SET IsRevoked = 1
-                    WHERE Token = @Token";
-
-                SqlCommand cmd = new SqlCommand(query, con);
-
-                cmd.Parameters.AddWithValue("@Token", token);
-
-                await con.OpenAsync();
-
-                await cmd.ExecuteNonQueryAsync();
-            }
-        }
-
-        public async Task<User?> GetUserByIdAsync(int id)
-        {
-            using (SqlConnection conn = new SqlConnection(_connectionString))
-            {
-                SqlCommand cmd = new SqlCommand("usp_GetUserById", conn);
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@UserId", id);
-
-                await conn.OpenAsync();
-
-                using var reader = await cmd.ExecuteReaderAsync();
-
-                if (await reader.ReadAsync())
-                {
-                    return new User
-                    {
-                        UserId = reader.GetInt32(0),
-                        Fullname = reader.GetString(1),
-                        Username = reader.GetString(2),
-                        PasswordHash = reader.GetString(3),
-                        Role = reader.GetString(4)
-                    };
-                }
-
-                return null;
-            }
+            return new JwtSecurityTokenHandler()
+                .WriteToken(token);
         }
     }
 }
